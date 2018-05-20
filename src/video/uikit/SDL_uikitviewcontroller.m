@@ -36,7 +36,7 @@
 #include "SDL_uikitopengles.h"
 
 #if SDL_IPHONE_KEYBOARD
-#include "keyinfotable.h"
+#import "SDL_uitextview_keycommands.h"
 #endif
 
 #if TARGET_OS_TV
@@ -57,7 +57,7 @@ SDL_AppleTVControllerUIHintChanged(void *userdata, const char *name, const char 
     void *animationCallbackParam;
 
 #if SDL_IPHONE_KEYBOARD
-    UITextField *textField;
+    UITextView *textView;
     BOOL rotatingOrientation;
 #endif
 }
@@ -195,21 +195,9 @@ SDL_AppleTVControllerUIHintChanged(void *userdata, const char *name, const char 
 /* Set ourselves up as a UITextFieldDelegate */
 - (void)initKeyboard
 {
-    textField = [[UITextField alloc] initWithFrame:CGRectZero];
-    textField.delegate = self;
-    /* placeholder so there is something to delete! */
-    textField.text = @" ";
+    textView = [[SDL_uitextview_keycommands alloc] initWithFrame:CGRectZero];
 
-    /* set UITextInputTrait properties, mostly to defaults */
-    textField.autocapitalizationType = UITextAutocapitalizationTypeNone;
-    textField.autocorrectionType = UITextAutocorrectionTypeNo;
-    textField.enablesReturnKeyAutomatically = NO;
-    textField.keyboardAppearance = UIKeyboardAppearanceDefault;
-    textField.keyboardType = UIKeyboardTypeDefault;
-    textField.returnKeyType = UIReturnKeyDefault;
-    textField.secureTextEntry = NO;
-
-    textField.hidden = YES;
+    textView.hidden = YES;
     keyboardVisible = NO;
 
 #if !TARGET_OS_TV
@@ -223,7 +211,7 @@ SDL_AppleTVControllerUIHintChanged(void *userdata, const char *name, const char 
 {
     [super setView:view];
 
-    [view addSubview:textField];
+    [view addSubview:textView];
 
     if (keyboardVisible) {
         [self showKeyboard];
@@ -266,8 +254,8 @@ SDL_AppleTVControllerUIHintChanged(void *userdata, const char *name, const char 
 - (void)showKeyboard
 {
     keyboardVisible = YES;
-    if (textField.window) {
-        [textField becomeFirstResponder];
+    if (textView.window) {
+        [textView becomeFirstResponder];
     }
 }
 
@@ -275,7 +263,7 @@ SDL_AppleTVControllerUIHintChanged(void *userdata, const char *name, const char 
 - (void)hideKeyboard
 {
     keyboardVisible = NO;
-    [textField resignFirstResponder];
+    [textView resignFirstResponder];
 }
 
 - (void)keyboardWillShow:(NSNotification *)notification
@@ -333,62 +321,15 @@ SDL_AppleTVControllerUIHintChanged(void *userdata, const char *name, const char 
     [self updateKeyboard];
 }
 
-/* UITextFieldDelegate method.  Invoked when user types something. */
-- (BOOL)textField:(UITextField *)_textField shouldChangeCharactersInRange:(NSRange)range replacementString:(NSString *)string
+- (NSArray<UIKeyCommand *> *)keyCommands
 {
-    NSUInteger len = string.length;
-
-    if (len == 0) {
-        /* it wants to replace text with nothing, ie a delete */
-        SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_BACKSPACE);
-        SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_BACKSPACE);
-    } else {
-        /* go through all the characters in the string we've been sent and
-         * convert them to key presses */
-        int i;
-        for (i = 0; i < len; i++) {
-            unichar c = [string characterAtIndex:i];
-            Uint16 mod = 0;
-            SDL_Scancode code;
-
-            if (c < 127) {
-                /* figure out the SDL_Scancode and SDL_keymod for this unichar */
-                code = unicharToUIKeyInfoTable[c].code;
-                mod  = unicharToUIKeyInfoTable[c].mod;
-            } else {
-                /* we only deal with ASCII right now */
-                code = SDL_SCANCODE_UNKNOWN;
-                mod = 0;
-            }
-
-            if (mod & KMOD_SHIFT) {
-                /* If character uses shift, press shift down */
-                SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_LSHIFT);
-            }
-
-            /* send a keydown and keyup even for the character */
-            SDL_SendKeyboardKey(SDL_PRESSED, code);
-            SDL_SendKeyboardKey(SDL_RELEASED, code);
-
-            if (mod & KMOD_SHIFT) {
-                /* If character uses shift, press shift back up */
-                SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_LSHIFT);
-            }
-        }
-
-        SDL_SendKeyboardText([string UTF8String]);
-    }
-
-    return NO; /* don't allow the edit! (keep placeholder text there) */
+    return @[[UIKeyCommand keyCommandWithInput:@"`" modifierFlags:UIKeyModifierControl action:@selector(sendFakeEscapeKey)]];
 }
 
-/* Terminates the editing session */
-- (BOOL)textFieldShouldReturn:(UITextField*)_textField
+- (void)sendFakeEscapeKey
 {
-    SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_RETURN);
-    SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_RETURN);
-    SDL_StopTextInput();
-    return YES;
+    SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_ESCAPE);
+    SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_ESCAPE);
 }
 
 #endif

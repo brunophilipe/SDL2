@@ -34,7 +34,7 @@
 #endif
 
 #if SDL_IPHONE_KEYBOARD
-@interface SDL_uikitviewcontroller : SDLRootViewController <UITextFieldDelegate>
+@interface SDL_uikitviewcontroller : SDLRootViewController
 #else
 @interface SDL_uikitviewcontroller : SDLRootViewController
 #endif

@@ -48,7 +48,7 @@ static UIKitKeyInfo unicharToUIKeyInfoTable[] = {
 /*  6 */  {  SDL_SCANCODE_UNKNOWN, 0 },
 /*  7 */  {  SDL_SCANCODE_UNKNOWN, 0 },
 /*  8 */  {  SDL_SCANCODE_UNKNOWN, 0 },
-/*  9 */  {  SDL_SCANCODE_UNKNOWN, 0 },
+/*  9 */  {  SDL_SCANCODE_TAB, 0 },
 /*  10 */ {   SDL_SCANCODE_UNKNOWN, 0 },
 /*  11 */ {   SDL_SCANCODE_UNKNOWN, 0 },
 /*  12 */ {   SDL_SCANCODE_UNKNOWN, 0 },
