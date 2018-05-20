@@ -99,12 +99,6 @@ NSString * const UIKeyInputDelete = @"\x7F";
     _allKeyCommands = keyCommands;
 }
 
-- (void)deleteBackward
-{
-    SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_BACKSPACE);
-    SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_BACKSPACE);
-}
-
 - (void)insertText:(NSString *)text
 {
     NSUInteger len = text.length;
@@ -129,42 +123,13 @@ NSString * const UIKeyInputDelete = @"\x7F";
 
         if (mod & KMOD_SHIFT) {
             /* If character uses shift, press shift down */
-            SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_LSHIFT);
-        }
-
-        /* send a keydown and keyup even for the character */
-        SDL_SendKeyboardKey(SDL_PRESSED, code);
-        SDL_SendKeyboardKey(SDL_RELEASED, code);
-
-        if (mod & KMOD_SHIFT) {
-            /* If character uses shift, press shift back up */
-            SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_LSHIFT);
+            [self sendFakeKeyEventWithDeferedReleaseForCode:code modifier:SDL_SCANCODE_LSHIFT];
+        } else {
+            [self sendFakeKeyEventWithDeferedReleaseForCode:code];
         }
     }
 
     SDL_SendKeyboardText([text UTF8String]);
-}
-
-- (void)sendFakeKeyWithControlModifier:(UIKeyCommand *)keyCommand
-{
-    unichar c = [keyCommand.input characterAtIndex:0];
-    SDL_Scancode code = unicharToUIKeyInfoTable[c].code;
-
-    SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_LCTRL);
-    SDL_SendKeyboardKey(SDL_PRESSED, code);
-    SDL_SendKeyboardKey(SDL_RELEASED, code);
-    SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_LCTRL);
-}
-
-- (void)sendFakeKeyWithAltModifier:(UIKeyCommand *)keyCommand
-{
-    unichar c = [keyCommand.input characterAtIndex:0];
-    SDL_Scancode code = unicharToUIKeyInfoTable[c].code;
-
-    SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_LALT);
-    SDL_SendKeyboardKey(SDL_PRESSED, code);
-    SDL_SendKeyboardKey(SDL_RELEASED, code);
-    SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_LALT);
 }
 
 /* Key commands provide support for some control keys */
@@ -173,40 +138,102 @@ NSString * const UIKeyInputDelete = @"\x7F";
     return _allKeyCommands;
 }
 
+/**
+ Sends a key pressed event (plus optionally a modifier) to SDL and sends a key released event 100ms later.
+
+ Sending a key pressed event and immediately sending the released event on the same call will cause the event to not
+ be present when checked from `SDL_GetKeyboardState`. Seding the release as a defered event fixes this.
+
+ @param code The main key code.
+ */
+- (void)sendFakeKeyEventWithDeferedReleaseForCode:(SDL_Scancode)code
+{
+    [self sendFakeKeyEventWithDeferedReleaseForCode:code modifier:SDL_SCANCODE_UNKNOWN];
+}
+
+/**
+ Sends a key pressed event (plus optionally a modifier) to SDL and sends a key released event 100ms later.
+
+ Sending a key pressed event and immediately sending the released event on the same call will cause the event to not
+ be present when checked from `SDL_GetKeyboardState`. Seding the release as a defered event fixes this.
+
+ @param code The main key code.
+ @param modifier The modifier key code.
+ */
+- (void)sendFakeKeyEventWithDeferedReleaseForCode:(SDL_Scancode)code modifier:(SDL_Scancode)modifier
+{
+    if (modifier != SDL_SCANCODE_UNKNOWN)
+    {
+        SDL_SendKeyboardKey(SDL_PRESSED, modifier);
+    }
+
+    if (code != SDL_SCANCODE_UNKNOWN)
+    {
+        SDL_SendKeyboardKey(SDL_PRESSED, code);
+    }
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_MSEC)), dispatch_get_main_queue(), ^{
+        if (code != SDL_SCANCODE_UNKNOWN)
+        {
+            SDL_SendKeyboardKey(SDL_RELEASED, code);
+        }
+
+        if (modifier != SDL_SCANCODE_UNKNOWN)
+        {
+            SDL_SendKeyboardKey(SDL_RELEASED, modifier);
+        }
+    });
+}
+
+- (void)sendFakeKeyWithControlModifier:(UIKeyCommand *)keyCommand
+{
+    unichar c = [keyCommand.input characterAtIndex:0];
+    SDL_Scancode code = unicharToUIKeyInfoTable[c].code;
+
+    [self sendFakeKeyEventWithDeferedReleaseForCode:code modifier:SDL_SCANCODE_LCTRL];
+}
+
+- (void)sendFakeKeyWithAltModifier:(UIKeyCommand *)keyCommand
+{
+    unichar c = [keyCommand.input characterAtIndex:0];
+    SDL_Scancode code = unicharToUIKeyInfoTable[c].code;
+
+    [self sendFakeKeyEventWithDeferedReleaseForCode:code modifier:SDL_SCANCODE_LALT];
+}
+
+- (void)deleteBackward
+{
+    [self sendFakeKeyEventWithDeferedReleaseForCode:SDL_SCANCODE_BACKSPACE];
+}
+
 - (void)sendFakeEscapeKey
 {
-    SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_ESCAPE);
-    SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_ESCAPE);
+    [self sendFakeKeyEventWithDeferedReleaseForCode:SDL_SCANCODE_ESCAPE];
 }
 
 - (void)sendFakeReturnKey
 {
-    SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_RETURN);
-    SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_RETURN);
+    [self sendFakeKeyEventWithDeferedReleaseForCode:SDL_SCANCODE_RETURN];
 }
 
 - (void)sendFakeUpArrowKey
 {
-    SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_UP);
-    SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_UP);
+    [self sendFakeKeyEventWithDeferedReleaseForCode:SDL_SCANCODE_UP];
 }
 
 - (void)sendFakeDownArrowKey
 {
-    SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_DOWN);
-    SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_DOWN);
+    [self sendFakeKeyEventWithDeferedReleaseForCode:SDL_SCANCODE_DOWN];
 }
 
 - (void)sendFakeLeftArrowKey
 {
-    SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_LEFT);
-    SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_LEFT);
+    [self sendFakeKeyEventWithDeferedReleaseForCode:SDL_SCANCODE_LEFT];
 }
 
 - (void)sendFakeRightArrowKey
 {
-    SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_RIGHT);
-    SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_RIGHT);
+    [self sendFakeKeyEventWithDeferedReleaseForCode:SDL_SCANCODE_RIGHT];
 }
 
 @end
