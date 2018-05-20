@@ -37,6 +37,9 @@ NSString * const UIKeyInputTab = @"\x09";
 NSString * const UIKeyInputDelete = @"\x7F";
 
 @implementation SDL_uitextview_keycommands
+{
+    NSArray<UIKeyCommand *> *_allKeyCommands;
+}
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
@@ -64,8 +67,36 @@ NSString * const UIKeyInputDelete = @"\x7F";
         [items insertObject:escapeGroup atIndex:0];
 
         self.inputAssistantItem.leadingBarButtonGroups = items;
+
+        [self generateModifierKeyCommands];
     }
     return self;
+}
+
+- (void)generateModifierKeyCommands
+{
+    NSMutableArray<UIKeyCommand *> *keyCommands = [[NSMutableArray alloc] initWithCapacity:2 * 26];
+
+    [keyCommands addObjectsFromArray:@[
+        [UIKeyCommand keyCommandWithInput:@"`" modifierFlags:UIKeyModifierControl action:@selector(sendFakeEscapeKey)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputReturn modifierFlags:0 action:@selector(sendFakeReturnKey)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputUpArrow modifierFlags:0 action:@selector(sendFakeUpArrowKey)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:0 action:@selector(sendFakeDownArrowKey)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow modifierFlags:0 action:@selector(sendFakeLeftArrowKey)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow modifierFlags:0 action:@selector(sendFakeRightArrowKey)]
+    ]];
+
+    for (char i=0; i<('z' - 'a'); i++)
+    {
+        [keyCommands addObject:[UIKeyCommand keyCommandWithInput:[NSString stringWithFormat:@"%c", 'a' + i]
+                                                   modifierFlags:UIKeyModifierControl
+                                                          action:@selector(sendFakeKeyWithControlModifier:)]];
+        [keyCommands addObject:[UIKeyCommand keyCommandWithInput:[NSString stringWithFormat:@"%c", 'a' + i]
+                                                   modifierFlags:UIKeyModifierAlternate
+                                                          action:@selector(sendFakeKeyWithAltModifier:)]];
+    }
+
+    _allKeyCommands = keyCommands;
 }
 
 - (void)deleteBackward
@@ -114,13 +145,32 @@ NSString * const UIKeyInputDelete = @"\x7F";
     SDL_SendKeyboardText([text UTF8String]);
 }
 
+- (void)sendFakeKeyWithControlModifier:(UIKeyCommand *)keyCommand
+{
+    unichar c = [keyCommand.input characterAtIndex:0];
+    SDL_Scancode code = unicharToUIKeyInfoTable[c].code;
+
+    SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_LCTRL);
+    SDL_SendKeyboardKey(SDL_PRESSED, code);
+    SDL_SendKeyboardKey(SDL_RELEASED, code);
+    SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_LCTRL);
+}
+
+- (void)sendFakeKeyWithAltModifier:(UIKeyCommand *)keyCommand
+{
+    unichar c = [keyCommand.input characterAtIndex:0];
+    SDL_Scancode code = unicharToUIKeyInfoTable[c].code;
+
+    SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_LALT);
+    SDL_SendKeyboardKey(SDL_PRESSED, code);
+    SDL_SendKeyboardKey(SDL_RELEASED, code);
+    SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_LALT);
+}
+
 /* Key commands provide support for some control keys */
 - (NSArray<UIKeyCommand *> *)keyCommands
 {
-    return @[
-        [UIKeyCommand keyCommandWithInput:@"`" modifierFlags:UIKeyModifierControl action:@selector(sendFakeEscapeKey)],
-        [UIKeyCommand keyCommandWithInput:UIKeyInputReturn modifierFlags:0 action:@selector(sendFakeReturnKey)]
-    ];
+    return _allKeyCommands;
 }
 
 - (void)sendFakeEscapeKey
@@ -133,6 +183,30 @@ NSString * const UIKeyInputDelete = @"\x7F";
 {
     SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_RETURN);
     SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_RETURN);
+}
+
+- (void)sendFakeUpArrowKey
+{
+    SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_UP);
+    SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_UP);
+}
+
+- (void)sendFakeDownArrowKey
+{
+    SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_DOWN);
+    SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_DOWN);
+}
+
+- (void)sendFakeLeftArrowKey
+{
+    SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_LEFT);
+    SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_LEFT);
+}
+
+- (void)sendFakeRightArrowKey
+{
+    SDL_SendKeyboardKey(SDL_PRESSED, SDL_SCANCODE_RIGHT);
+    SDL_SendKeyboardKey(SDL_RELEASED, SDL_SCANCODE_RIGHT);
 }
 
 @end
