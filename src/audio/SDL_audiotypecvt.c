@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2017 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2018 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -170,7 +170,14 @@ SDL_Convert_F32_to_S8_Scalar(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     LOG_DEBUG_CONVERT("AUDIO_F32", "AUDIO_S8");
 
     for (i = cvt->len_cvt / sizeof (float); i; --i, ++src, ++dst) {
-        *dst = (Sint8) (*src * 127.0f);
+        const float sample = *src;
+        if (sample > 1.0f) {
+            *dst = 127;
+        } else if (sample < -1.0f) {
+            *dst = -127;
+        } else {
+            *dst = (Sint8)(sample * 127.0f);
+        }
     }
 
     cvt->len_cvt /= 4;
@@ -189,7 +196,14 @@ SDL_Convert_F32_to_U8_Scalar(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     LOG_DEBUG_CONVERT("AUDIO_F32", "AUDIO_U8");
 
     for (i = cvt->len_cvt / sizeof (float); i; --i, ++src, ++dst) {
-        *dst = (Uint8) ((*src + 1.0f) * 127.0f);
+        const float sample = *src;
+        if (sample > 1.0f) {
+            *dst = 255;
+        } else if (sample < -1.0f) {
+            *dst = 0;
+        } else {
+            *dst = (Uint8)((sample + 1.0f) * 127.0f);
+        }
     }
 
     cvt->len_cvt /= 4;
@@ -208,7 +222,14 @@ SDL_Convert_F32_to_S16_Scalar(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     LOG_DEBUG_CONVERT("AUDIO_F32", "AUDIO_S16");
 
     for (i = cvt->len_cvt / sizeof (float); i; --i, ++src, ++dst) {
-        *dst = (Sint16) (*src * 32767.0f);
+        const float sample = *src;
+        if (sample > 1.0f) {
+            *dst = 32767;
+        } else if (sample < -1.0f) {
+            *dst = -32767;
+        } else {
+            *dst = (Sint16)(sample * 32767.0f);
+        }
     }
 
     cvt->len_cvt /= 2;
@@ -227,7 +248,14 @@ SDL_Convert_F32_to_U16_Scalar(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     LOG_DEBUG_CONVERT("AUDIO_F32", "AUDIO_U16");
 
     for (i = cvt->len_cvt / sizeof (float); i; --i, ++src, ++dst) {
-        *dst = (Uint16) ((*src + 1.0f) * 32767.0f);
+        const float sample = *src;
+        if (sample > 1.0f) {
+            *dst = 65534;
+        } else if (sample < -1.0f) {
+            *dst = 0;
+        } else {
+            *dst = (Uint16)((sample + 1.0f) * 32767.0f);
+        }
     }
 
     cvt->len_cvt /= 2;
@@ -246,7 +274,14 @@ SDL_Convert_F32_to_S32_Scalar(SDL_AudioCVT *cvt, SDL_AudioFormat format)
     LOG_DEBUG_CONVERT("AUDIO_F32", "AUDIO_S32");
 
     for (i = cvt->len_cvt / sizeof (float); i; --i, ++src, ++dst) {
-        *dst = (Sint32) (((double) *src) * 2147483647.0);
+        const float sample = *src;
+        if (sample > 1.0f) {
+            *dst = 2147483647;
+        } else if (sample < -1.0f) {
+            *dst = -2147483647;
+        } else {
+            *dst = (Sint32)((double)sample * 2147483647.0);
+        }
     }
 
     if (cvt->filters[++cvt->filter_index]) {
@@ -473,6 +508,16 @@ SDL_Convert_U16_to_F32_SSE2(SDL_AudioCVT *cvt, SDL_AudioFormat format)
         cvt->filters[cvt->filter_index](cvt, AUDIO_F32SYS);
     }
 }
+
+#if defined(__GNUC__) && (__GNUC__ < 4)
+/* these were added as of gcc-4.0: http://gcc.gnu.org/bugzilla/show_bug.cgi?id=19418 */
+static inline __m128 _mm_castsi128_ps(__m128i __A) {
+  return (__m128) __A;
+}
+static inline __m128i _mm_castps_si128(__m128 __A) {
+  return (__m128i) __A;
+}
+#endif
 
 static void SDLCALL
 SDL_Convert_S32_to_F32_SSE2(SDL_AudioCVT *cvt, SDL_AudioFormat format)

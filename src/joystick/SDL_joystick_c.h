@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2017 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2018 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -32,10 +32,6 @@ extern int SDL_GameControllerInitMappings(void);
 extern void SDL_GameControllerQuitMappings(void);
 extern int SDL_GameControllerInit(void);
 extern void SDL_GameControllerQuit(void);
-
-/* Locking for multi-threaded access to the joystick API */
-extern void SDL_LockJoystickList(void);
-extern void SDL_UnlockJoystickList(void);
 
 /* Function to extract information from an SDL joystick GUID */
 extern void SDL_GetJoystickGUIDInfo(SDL_JoystickGUID guid, Uint16 *vendor, Uint16 *product, Uint16 *version);
